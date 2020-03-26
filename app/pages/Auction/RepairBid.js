@@ -9,6 +9,7 @@ class RepairBid extends Component {
   static propTypes = {
     bid: PropTypes.object.isRequired,
     getNameInfo: PropTypes.func.isRequired,
+    showError: PropTypes.func.isRequired,
   };
 
   constructor(props) {
@@ -51,7 +52,8 @@ class RepairBid extends Component {
     if (value * consensus.COIN > consensus.MAX_MONEY)
       return;
     this.setState({value: value});
-    this.verifyBid(value);
+    if (parseFloat(value))
+      this.verifyBid(value);
   }
 
   verifyBid(value) {
@@ -60,19 +62,28 @@ class RepairBid extends Component {
       name: bid.name,
       address: bid.from,
       bid: value * consensus.COIN
-    }).then((attempt) => {
-      if (attempt.blind === bid.blind)
-        this.setState({isCorrect: true});
-        walletClient.importNonce({
-          name: bid.name,
-          address: bid.from,
-          bid: parseFloat(value),
-        }).then(() => {
-          this.props.getNameInfo(bid.name);
-        });
-    });
-
-    
+    }).then(
+      (attempt) => {
+        if (attempt.blind === bid.blind) {
+          this.setState({isCorrect: true});
+          walletClient.importNonce({
+            name: bid.name,
+            address: bid.from,
+            bid: parseFloat(value),
+          }).then(
+            () => {
+              this.props.getNameInfo(bid.name);
+            },
+            (reject) => {
+              this.props.showError(reject.message);
+            }
+          );
+        }
+      },
+      (reject) => {
+        this.props.showError(reject.message);
+      }
+    );
   }
 
   render() {
